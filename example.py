@@ -1,30 +1,41 @@
-#!/usr/bin/env python
+#! /usr/bin/env nix-shell
+#! nix-shell -i python -p python27Packages.pyserial python27Packages.netifaces
 from qnapdisplay import QnapDisplay
+from datetime import timedelta
+
 import time
+import platform
+import netifaces as ni
 
 Lcd = QnapDisplay()
 
 if Lcd.Init:
-    Lcd.Write(0, 'Qnap Display')
-    Lcd.Write(1, 'Press a key')
+    while True:
+        Lcd.Write(0, platform.node())
+        Lcd.Write(1, platform.system() + " " + platform.release())
 
-    read = Lcd.Read()
-    Lcd.Write(1, '%s pressed' % (read))
-    time.sleep(2)
+        time.sleep(3)
 
-    Lcd.Write(0, 'On and Off')
-    Lcd.Write(1, '10 times')
+        with open('/proc/uptime', 'r') as f:
+            uptime_seconds = float(f.readline().split()[0])
+            uptime_string = str(timedelta(seconds = uptime_seconds))
 
-    for x in range(0, 10):
+        Lcd.Write(0, "uptime")
+        Lcd.Write(1, uptime_string);
 
-        Lcd.Disable()
-        time.sleep(4)
-        Lcd.Enable()
-        time.sleep(4)
+        time.sleep(3)
 
-    Lcd.Enable()
-    Lcd.Write(0, 'Stay a while')
-    Lcd.Write(1, 'Stay forever')
+        list_of_interfaces = [ 'enp5s0', 'enp6s0', 'enp9s0', 'enp10s0' ]
+        for interface in list_of_interfaces:
+            Lcd.Write(0, interface)
+            try:
+                ni.ifaddresses(interface)
+                ip = ni.ifaddresses(interface)[2][0]['addr']
+                Lcd.Write(1, ip);
+            except:
+                Lcd.Write(1, "no ip address");
+
+            time.sleep(3)
 
 else:
     print 'Oops something went wrong here'
